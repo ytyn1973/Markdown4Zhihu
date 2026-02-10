@@ -111,7 +111,7 @@ mask_layer要预测系数，因为prototype是K维的，而mask是系数与proto
 $$M_i(x, y) = \sum_{k} c_{ik} \cdot P_k(x, y)$$
 
 
-将基mask和mask 系数线性组合，其中 $cik$ 表示第i个检测框的第k个prototype的权重。$Pk（x，y）$表示第k个prototype在$（x，y）$处的值。
+将基mask和mask 系数线性组合，其中 $cik$ 表示第i个检测框的第k个prototype的权重。 $Pk（x，y）$  表示第k个prototype在 $（x，y）$ 处的值。
 - 按bbox裁剪mask：此时得到的mask是全图范围内的，而实例分割对于某一实例只关注框内。所以需要按照bbox的区域，将区域外的裁剪掉。
 - resize：由于prototype是依据P5得到的，其大小显然小于原图，线性组合后的结果也小于原图，需要通过resize使其与原图一致
 - 二值化：此时生成的mask实际上代表该点属于实例的概率，因此要有一个阈值进行二值化，这样就得到了最后的mask
@@ -121,36 +121,61 @@ $$M_i(x, y) = \sum_{k} c_{ik} \cdot P_k(x, y)$$
 之前介绍的是前向推理过程，对于训练好的模型进行单张图片推理的时候就是这个流程。在训练中这个流程会发生一些变化，比如NMS就不做了，为了得到更多的训练数据。但是总体上每张图还是会有类似的的推理过程。所以训练部分主要介绍loss函数的计算。
 
 损失主要有三部分，分别是边框损失，类别损失和mask损失
+
 $$
 L_{\text{total}} = L_{\text{bbox}} + L_{\text{conf}} + L_{\text{mask}}
 $$
 
 - 边框损失：Yolact中的边框损失用的是Smooth L1 Loss
-$$L_{\text{loc}} = \sum_{i \in \text{正样本}} \sum_{j \in \{x, y, w, h\}} \text{SmoothL1}(\hat{b}_{i,j} - b_{i,j})$$
 
-$\hat{b}_{i,j}$是预测的偏移量，$b_{i,j}$是匹配的ground truth边框，这里只计算正样本的损失。其中Smooth L1
-$$\text{SmoothL1}(x) =
+$$
+L_{\text{loc}} = \sum_{i \in \text{正样本}} \sum_{j \in \{x, y, w, h\}} \text{SmoothL1}(\hat{b}_{i,j} - b_{i,j})
+$$
+
+ $\hat{b}_{i,j}$ 是预测的偏移量， $b_{i,j}$ 是匹配的ground truth边框，这里只计算正样本的损失。其中Smooth L1
+
+$$
+\text{SmoothL1}(x) =
 \begin{cases} 
 0.5 x^2, & |x| < 1 \\
 |x| - 0.5, & |x| \ge 1
-\end{cases}$$
+\end{cases}
+$$
 
 Smooth L1在偏差小时取平方，损失大时取线性。使得整体损失比较平滑且不会梯度过大。
 
 由于边框损失只针对正样本，以上的公式会有这样的问题：预测大量的框，蒙对了血赚，蒙错了没损失。因此要进行归一化并乘以权重（N为正样本数量）
-$$L_{\text{loc}} = \frac{\alpha}{N} \sum_{i \in \text{正样本}} \text{SmoothL1}(\hat{b}_i - b_i)$$
+
+$$
+L_{\text{loc}} = \frac{\alpha}{N} \sum_{i \in \text{正样本}} \text{SmoothL1}(\hat{b}_i - b_i)
+$$
 
 - 分类损失：yolact对于分类损失提供了多种方案，这里以（普通交叉熵 + OHEM）为例。交叉熵的计算方法为
-$$L_{\mathrm{CE}} = - \frac{1}{N} \sum_{i=1}^{N} \log \Big( \mathrm{softmax}(\mathbf{c}_i)_{y_i} \Big)$$
+  
+$$
+L_{\mathrm{CE}} = - \frac{1}{N} \sum_{i=1}^{N} \log \Big( \mathrm{softmax}(\mathbf{c}_i)_{y_i} \Big)
+$$
+
 但是由于负样本数量远远大于正样本，因此这里要用OHEM（Online Hard Example Mining）。计算负样本的loss score
-$$s_i = \log \Big( \sum_{c=0}^{C-1} e^{c_i^c} \Big) - c_i^0$$
+
+$$
+s_i = \log \Big( \sum_{c=0}^{C-1} e^{c_i^c} \Big) - c_i^0
+$$
+
 取最大的K个保证对抗样本数量相当
 
 - mask损失
 公式如下
-$$L_{\text{mask}} = \frac{\alpha}{N_{\text{pos}}} \sum_{i=1}^{N_{\text{pos}}} \text{BCE}(M_i, GT_i)$$
+
+$$
+L_{\text{mask}} = \frac{\alpha}{N_{\text{pos}}} \sum_{i=1}^{N_{\text{pos}}} \text{BCE}(M_i, GT_i)
+$$
+
 其中GT为真实mask，M为组合且裁剪后的预测mask。BCE是对每个像素点计算损失
- $$\text{BCE}(M_i, GT_i) = - \sum_{x,y} \Big[ GT_i(x,y) \log M_i(x,y) + (1 - GT_i(x,y)) \log (1 - M_i(x,y)) \Big]$$
+
+ $$
+ \text{BCE}(M_i, GT_i) = - \sum_{x,y} \Big[ GT_i(x,y) \log M_i(x,y) + (1 - GT_i(x,y)) \log (1 - M_i(x,y)) \Big]
+ $$
 
 **7.测试**
 按照仓库中的教程配置环境和下载权重后可进行测试
