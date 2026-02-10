@@ -107,7 +107,10 @@ mask_layer要预测系数，因为prototype是K维的，而mask是系数与proto
 经过这几步后得到的是少量优质的final_boxes，final_scores，final_classes，final_mask_coeff.
 
 - 生成实例 mask：根据公式
+
 $$M_i(x, y) = \sum_{k} c_{ik} \cdot P_k(x, y)$$
+
+
 将基mask和mask 系数线性组合，其中 $cik$ 表示第i个检测框的第k个prototype的权重。$Pk（x，y）$表示第k个prototype在$（x，y）$处的值。
 - 按bbox裁剪mask：此时得到的mask是全图范围内的，而实例分割对于某一实例只关注框内。所以需要按照bbox的区域，将区域外的裁剪掉。
 - resize：由于prototype是依据P5得到的，其大小显然小于原图，线性组合后的结果也小于原图，需要通过resize使其与原图一致
