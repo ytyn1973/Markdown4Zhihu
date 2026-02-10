@@ -132,7 +132,7 @@ $$
 L_{\text{loc}} = \sum_{i \in \text{正样本}} \sum_{j \in \{x, y, w, h\}} \text{SmoothL1}(\hat{b}_{i,j} - b_{i,j})
 $$
 
- $\hat{b}_{i,j}$ 是预测的偏移量， $b_{i,j}$ 是匹配的ground truth边框，这里只计算正样本的损失。其中Smooth L1
+$\hat{b}_{i,j}$ 是预测的偏移量， $b_{i,j}$ 是匹配的ground truth边框，这里只计算正样本的损失。其中Smooth L1
 
 $$
 \text{SmoothL1}(x) =
